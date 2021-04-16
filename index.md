@@ -1,158 +1,171 @@
-Setting Up a Programming Environment via Windows 10 Bash
+Setting Up Windows WSL2 with XFCE Desktop
+========================================================
+*Updated April 13th 2021*
+## Install WSL
+### 1. Install Windows Subsystem for Linux (WSL)
+--------------------------------------------
+
+First we need WSL 1 and we can do this by either running
+
+```powershell
+dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+``` 
+
+in a PowerShell or Windows Terminal as an administrator, or by going to ```Control Panel/Programs/Programs and Features``` and then in the left sidebar click 'Turn Windows features on or off'. On the list that comes up, select the "Microsoft Windows Subsystem for Linux"
+
+### 2. Check Requirements for WSL2
+To update to WSL 2, you must be running Windows 10.
+
+    * For x64 systems: Version 1903 or higher, with Build 18362 or higher.
+    * For ARM64 systems: Version 2004 or higher, with Build 19041 or higher.
+    * Builds lower than 18362 do not support WSL 2. Use the Windows Update Assistant to update your version of Windows.
+
+To check your version and build number, select Windows logo key + R, type winver, select OK. (Or enter the ver command in Windows Command Prompt). Update to the latest Windows version in the Settings menu.
+
+
+### 3. Enable "Virtual Machine Platform"
+
+In order to run WSL2, you need to enable the Virtual machine platform in the Windows Features. You can do this again by either running the following command in a PowerShell or Windows Terminal as admin
+```powershell
+dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+```
+
+or by going to ```Control Panel/Programs/Programs and Features``` and then in the left sidebar click 'Turn Windows features on or off'. On the list that comes up, select the "Virtual Machine Platform" and click OK.
+
+### 4. Download and Install the WSL2 Kernel Update
+
+Download and install [WSL2 Kernel Update](https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi). Check [here](https://docs.microsoft.com/en-us/windows/wsl/install-win10) to see if there is a new link or new instructions
+
+### 5. Set WSL2 as your default version
+You can do this by running
+```powershell
+wsl --set-default-version 2
+```
+in Windows Terminal or PowerShell.
+
+## Install Linux Distribution and xfce4 Desktop
+### 1. Install Linux Distribution
+Go to the Microsoft Store and install the Linux distribution you want (i.e. Debian). You can install multiple distributions. Note that the distribution is not actually installed until you Launch it for the first time. So, launch the distribution you want, set up the username and password and you are set to go.
+
+### 2. Set your distribution to WSL1 or WSL2
+
+You can check the WSL version assigned to each of the Linux distributions you have installed by opening the PowerShell command line and entering the command (only available in Windows Build 18362 or higher): ```wsl -l -v```
+```powershell
+wsl --list --verbose
+```
+To set a distribution to be backed by either version of WSL please run:
+```powershell
+wsl --set-version <distribution name> <versionNumber>
+```
+Make sure to replace <distribution name> with the actual name of your distribution and <versionNumber> with the number '1' or '2'. You can change back to WSL 1 at anytime by running the same command as above but replacing the '2' with a '1'.
+
+### 3. Update the distribution
+Now, launch the distro you chose, and run a good old
+```shell
+sudo apt-get update
+sudo apt-get upgrade
+```
+
+### 4. Install XFCE4
+This depends on the distribution you chose, but if you chose Debian, this comes without a desktop environment, so you need to install it. You can choose anyone you like, but I like xfce4 because it is simple, functional and fast. To install it, you can just run
+```shell
+sudo apt-get install xfce
+```
+This installed the environment, however, now we need to tell it where to show it. In order to do that, we need to install an X server that displays whatever the distro is showing.
+
+## Install and Run VcXsrv 
+There are other version of X server, but VcXsrv seems to be the standard and I saw no reason to change it.
+
+### 1. Download and Install VcXsrv
+Download it [here](https://sourceforge.net/projects/vcxsrv/) and install it. If the link is broken... Google it. Or better DuckDuckGo it, although it doesn't sound as good.
+
+### 2. Change Compatibility Options, Firewall Settings 
+You can manually run VcXsrv every time by running XLaunch, which should be installed on your desktop by now. One thing that you will want to do is change some display option for the X server. To do this:
+    1. Go to "C:\Program Files\VcXsrv" 
+    2. Right-click on xlaunch.exe and go to Properties
+    3. Go to the Compatibility tab and at the bottom to "Change High DPI settings"
+    4. Select the "Override high DPI scaling behavior..." and make sure that the drop-down menu has "Application selected"
+    5. Click OK and exit
+
+Next go to Windows Defender Firewall and in the side menu, go to "Allow an app or feature through Windows Defender Firewall", and scroll down and enable "VcXsrv windows xserver" by selecting the Private and Public boxes. Click Ok and exit.
+
+### 3. Run VcXsrv
+Now, run XLaunch. You can automate the selection process but for now, I chose
+* One large window
+* Start no client
+* Clipboard, Primary Selection, Native opengl, Disable access control
+
+***NOTE THAT THE DISABLE ACCESS CONTROL IS A MUST!!!***
+
+If you start getting the error later on. It's because you didn't disable access controls
+
+```shell
+/usr/bin/startxfce4: X server already running on display X.X.X.1:0.0
+Authorization required, but no authorization protocol specified
+xrdb: Resource temporarily unavailable
+xrdb: Can't open display 'X.X.X.1:0.0'
+Authorization required, but no authorization protocol specified
+Authorization required, but no authorization protocol specified
+xfce4-session: Cannot open display: .
+```
+
+
+## Setup Linux Distro Display Options
+
+### 1. Test VcXsrv Display Setup and WSL IP Address
+Now, the servers gives our Linux distro a way to display its content. However, they are not aware of each other. In order to run a GUI program (xfce4 in this case) and tell it where to display, we need to run it using the following syntax
+***NOTE: VcXsrv HAS TO BE RUNNING FOR THIS TO WORK. GO BACK AND USE XLAUNCH IF IT'S NOT***
+
+```shell
+DISPLAY=$(grep nameserver /etc/resolv.conf | awk '{print $2}'):0.0 startxfce4
+```
+
+Note that the part in parenthesis is what gives us the WSL IP for Windows. So the Linux distro knows to which IP and server to send the graphical information. This is the same that is obtained by running in Windows 
+```powershell
+ipconfig
+``` 
+and look for WSL ethernet adaptor.
+
+If you set up everything correctly, you should see the desktop appearing on you WSL. If you get problems, first make sure that the firewall exception is setup, and second, if you see the following
+```shell
+/usr/bin/startxfce4: X server already running on display X.X.X.1:0.0
+Authorization required, but no authorization protocol specified
+xrdb: Resource temporarily unavailable
+xrdb: Can't open display 'X.X.X.1:0.0'
+Authorization required, but no authorization protocol specified
+Authorization required, but no authorization protocol specified
+xfce4-session: Cannot open display: .
+```
+
+you have not run VcXsrv with disable access control.
+
+### 2. Setup Linux Distro for Future GUI Sessions
+Now that you know that everything works, you don't want to add every time the DISPLAY=... part. So we can set up something that does it by default by going to the home folder and modifying the .bashrc file.
+```shell
+$ cd ~
+$ nano .bashrc
+```
+
+Then append at the end the following lines
+```
+export HOST_IP=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}')
+export DISPLAY=$HOST_IP:0
+```
+and save. Now, you can avoid telling the distro which display to send the information to, and just use the commands as if you had a screen running. But still remember that you ***HAVE TO HAVE VcXsrv RUNNING***
+
+
+Setting up a Programming Environment in WSL2
 ========================================================
 
-Last modified: Jun 10, 2020
+[1 Installing the Compilers](#1-installing-the-compilers)
 
-Contents:
+[2 Installing Eclipse](#2-installing-eclipse)
 
-[1 Get the Windows 10 Subsystem for Linux](#get-the-windows-10-subsystem-for-linux)
-
-  [1.1 sudo apt-get](#sudo-apt-get)
-
-[2 Installing X](#2-x)
-
-[3 Installing the Compilers](#installing-the-compilers)
-
-[4 Installing Eclipse](#installing-eclipse)
-
-[5 Optional packages](#optional-packages)
+[3 Optional packages](#3-optional-packages)
 
 
 
-In 2016, Microsoft added to Windows 10 (64 bit) the ability to run Ubuntu Linux in parallel with Windows. Variously referred to as “Bash on Windows”, or “Ubuntu on Windows”, and more officially as the “Windows Subsystem for Linux” (WSL), this seems to be a very useful way to work with Linux-based software development tools from a Windows 10 machine. Microsoft has announced plans to support other Linux distributions as well.
-
-What it is
-
-This provides a Linux OS running alongside Windows. Both share the same hard drive (and can access each other’s files), and the clipboard supports copy-and-paste between the two quite naturally. (A small thing, perhaps, but one that I find quite
-
-What it is not
-
-This provides a “server”-style installation of Linux. There is no full Linux desktop. The main entry point to Linux is a text-only `bash` shell for entering Linux commands. The ability to inter-script (i.e., to launch Windows programs from Linux or vice versa) seems quite limited.
-
-What it can be
-
-Combined with an X server running under Windows, you can launch and run GUI programs from Linux.
-
-In this document, I’ll walk you through the process of setting up a programming environment consisting of:
-
-*   The basic Linux on Windows system.
-*   An X server (to display Linux-based GUI programs on the Windows-managed display screen).
-*   Java and C++ compilers
-*   The Eclipse IDE
-
-Now, yes, you can install [those compilers](../../Public/installingACompiler/index.html) and [that IDE](../../Public/installingAnIDE/index.html) directly in Windows, but some things just seem to me to run more “smoothly” in Linux. And if your PC is a different version of Windows (or not Windows at all), those other guides are where you should go.
-
-And there’s nothing wrong with trying out both approaches.
-
-1 Get the Windows 10 Subsystem for Linux
-========================================
-
-You’ll find the instructions [here](https://msdn.microsoft.com/en-us/commandline/wsl/about), but in case that page moves or disappears, the summary is:
-
-1.  Make sure you have Windows 10, 64-bit, and that you have been keeping it updated. (As of 6/1/2017, Microsoft says that you should have update 14393.0 or later).
-    
-2.  Turn on Developer Mode: Open `Settings` -> `Update and Security` -> `For Developers` and select the “Developer mode”. Close the `Settings` window.
-    
-3.  Enable Linux for Windows: From the taskbar, search for “Turn Windows features on or off”. Select “Windows Powershell 2.0” (if not already selected) and select “Windows Subsystem for Linux (beta)”. Click `OK`.
-    
-4.  Back at the taskbar, search for “ubuntu”. You should see that “Ubuntu App” has been installed. Select it to run `bash`.
-    
-    Try some simple Linux commands such as `ls`, `cd`, and `pwd`. You’ll find that your Windows lettered disc drives are available under ‘/mnt’. For example, your `C:` drive is `/mnt/c`.
-    
-
-1.1 sudo apt-get
-----------------
-
-Before we continue on, let’s introduce a couple of the programs that you will be using through the rest of this process.
-
-*   `apt-get` is the program you use to update your Linux software and to install or uninstall software packages.
-    
-    `apt-get`, however, can only be run by a Linux administrator. Now, _you_ are the administrator for the Linux OS you have just installed, but for safety’s sake you _run_ most programs as an ordinary, non-administrator user.
-    
-*   `sudo` is a command that says “run the following as the administrator”.
-    
-
-For example, the following sequence is how you update your Linux software:
-
-    sudo apt-get update
-    sudo apt-get upgrade
-    
-
-The first command actually fetches the latest information about what updates are available. The second installs the updates. The “sudo” in front causes them to be run as the administrator. When you give the first “sudo” command, you will be prompted for your password to prove that you really are the account owner. After that, `sudo` remembers your identity for a short period of time, so you can give multiple `sudo` commands in a row, only asked for your password once, as long as you don’t take too much time in between.
-
-Go ahead and give those two commands now.
-
-> Try to give those two commands on a fairly regular basis so your Linux OS stays up to date. You’ll actually be notified when you start a new `bash` session if there are updates awaiting.
-
-Close your `bash` session for now by giving the command
-
-    exit
-    
-
-2 Installing X
-==============
-
-Now let’s work on displaying graphics form your Linux programs.
-
-The first step is to get an X server package. Most X server packages put a heavy emphasis on connecting to remote machines, but we are going to use this one to serve programs running on the same local machine.
-
-*   I find the [VcXsrv](https://sourceforge.net/projects/vcxsrv/) works very well in this setup.
-    
-    > Warning: X2Go, our favorite way to [remotely log in to the CS Dept Linux servers](https://www.cs.odu.edu/~zeil/cs252/latest/Public/xwinlaunch/index.html#x2go-client) also uses VcXsrv. This should not be a problem, but there is a bug in some versions of VcXsrv that can cause our intended use of VcXsrv to clash with X2Go.
-    > 
-    > If you are a frequent user of X2Go, I recommend using one of the other X packages listed below instead.
-    
-*   [XMing](http://www.straightrunning.com/XmingNotes/) seems to be a good choice as well.
-    
-    *   Get the public domain release for “Xming” and for the “Xming-fonts”.
-*   [Cygwin/X](https://x.cygwin.com/) also works quite well, and if we were using the CygWin ports of the `g++` compiler, it would be my top choice. But since we are going to get those in the Windows Subsystem for Linux, it seems unnecessary to add the entire CygWin “POSIX inside Windows” layer.
-    
-    *   By default, CygWin/X accepts X connections from outside, but not from programs running on the same machine. The latter is exactly what we want to use it for. When launching CygWin/X, add “`-listen tcp`” to the “Additional parameters for X server” box.
-        
-
-1.  So, go to one of those X server websites, download the installer, and run it to install an X server.
-    
-    Then run the Xlaunch program to launch the server.
-    
-    > Get in the habit of running this X server just before you open a Windows `bash` session. It won’t do much of anything when you run it, other than add a new icon in the task bar tray. It is a _server_, a program that sits quietly and waits until some other _client_ program calls upon it.
-    
-2.  Run Windows `ubuntu`.
-    
-3.  We’re going to test your ability to run X GUI applications from within Linux and to see the results in Windows. So first we need to install an X application. In `bash`, give the command
-    
-        sudo apt-get install xterm   
-        
-    When the installation is complete, test it by giving the command
-    
-        DISPLAY=:0 xterm &  
-        
-    (For CygWin/X, you may need to change the “:0” to “:0.0”.)
-    
-    You should see a new window open up. This is another window in which you can issue Linux commands. It is, however, a Linux/X application, using X to render its general appearance, menus, etc. You can see this by holding the Ctrl key and then left- or right- clicking on the `xterm` window. Each mouse button will pop up a different menu.
-    
-4.  The `DISPLAY=` part of the earlier command is the way that we tell an X \_client" program (in that case, `xterm`) where to find an X server to handle drawing things and on which of many possible screens we want to draw (from among many that server might be managing). In this case, the `DISPLAY` value is pretty simple, because we are not connecting to a remote machine and we’re using using the default screen.
-    
-    Still, we don’t want to have to add that to every command. So let’s set that as the default for our Linux applications.
-    
-    Do
-    
-        nano ~/.bashrc
-        
-    Add the following line to the end:
-    
-        export DISPLAY=:0
-        
-    Save that and exit from `nano`.
-    
-    Exit from `bash`. And then restart it. Now
-    
-        xterm &
-        
-    should open an `xterm` window without your needing to supply the `DISPLAY` preamble.
-    
-
-3 Installing the Compilers
-==========================
+## 1 Installing the Compilers
 
 Now we’re ready to start installing some real software. You will need
 
@@ -181,8 +194,8 @@ Once those are done, verify your installation by typing the following in `bash`:
 
 Each should respond with an identifying message making clear that the software is installed and running.
 
-4 Installing Eclipse
-====================
+## 2 Installing Eclipse
+
 
 Next up is the Eclipse IDE. We could install this with an `apt-get` command also, but the version in the Ubuntu respository seems to lag far behind the Eclipse project releases.
 
@@ -200,7 +213,7 @@ Next up is the Eclipse IDE. We could install this with an `apt-get` command also
         
     2.  If you want to reserve the possibility of doing Java programming in the future, scroll down to the “Eclipse IDE for Java Developers” and download the installer for 64-bit Linux.
         
-3.  What you will receive from this download is a `tar.gz`package. This is a compressed archive (similar to a `.zip` file).
+    3.  What you will receive from this download is a `tar.gz`package. This is a compressed archive (similar to a `.zip` file).
     
     I will assume that you downloaded this into your Windows `Downloads` directory. In `bash`, copy this into your Linux home directory:
     
@@ -211,13 +224,13 @@ Next up is the Eclipse IDE. We could install this with an `apt-get` command also
     
     You should see a new `~/eclipse/` directory. Your Eclipse installation is in there.
     
-4.  Type
+    4.  Type
     
     ~/eclipse/eclipse &
     
     to launch Eclipse.
     
-5.  **If You Installed the Eclipse for Java Developers**
+    5.  **If You Installed the Eclipse for Java Developers**
     
     If you installed the Java Eclipse rather than the C/C++ Developer’s version, we need to add the C++ support.
     
@@ -237,8 +250,8 @@ You should now be able to create C++ projects in Eclipse.
 
 If you need some help, revisit the Eclipse sections of [IDEs for Compiling under X](https://www.cs.odu.edu/~zeil/cs252/latest/Public/progdevx/index.html#eclipse) and [Debugging under X](https://www.cs.odu.edu/~zeil/cs252/latest/Public/debugx/index.html#the-eclipse-debugger) from CS252.
 
-5 Optional packages
-===================
+## 3 Optional packages
+
 
 The main purpose of this document was to set up your programming environment. But since you now have a working Linux installation running under Windows 10, here’s a few optional packages you might want to consider installing.
 
